@@ -225,7 +225,7 @@ const Index = () => {
                 <img 
                   src={settings.logo_url} 
                   alt={companyName}
-                  className="h-8 w-8 object-contain"
+                  className="h-12 w-12 object-contain"
                 />
               ) : ( <span ></span>
 

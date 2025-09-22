@@ -149,7 +149,7 @@ export default function Cart() {
       if (!cleanedPhone.startsWith('+221') && !cleanedPhone.startsWith('+226')) {
         toast({
           title: "Format de numéro invalide",
-          description: "Pour Wave, le numéro doit être au format international (+221... ou +226...)",
+          description: "Pour Wave, le numéro doit être au format international (+221...)",
           variant: "destructive",
         });
         return;
@@ -237,7 +237,7 @@ export default function Cart() {
 
       setTimeout(() => {
         window.open(nabooTransaction.checkout_url, '_blank');
-        navigate(`/suivi-commande`);
+        navigate(`/suivi-commande?phone=${customerInfo.phone}&order_id=${order.id}`);
       }, 2000);
 
     } catch (error: any) {
@@ -347,7 +347,7 @@ export default function Cart() {
       });
 
       clearCart();
-      navigate(`/suivi-commande`);
+      navigate(`/suivi-commande?phone=${customerInfo.phone}&order_id=${order.id}`);
     } catch (error: any) {
       console.error('Erreur commande gratuite:', error);
       toast({
