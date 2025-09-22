@@ -205,7 +205,7 @@ const Index = () => {
     return `${price.toLocaleString()} FCFA`;
   };
 
-  const companyName = settings?.company_name || "AFFAIRE DE GRAND";
+  const companyName = settings?.company_name || "";
   const heroTitle = settings?.hero_title || "Découvrez nos produits d'exception";
   const heroSubtitle = settings?.hero_subtitle || "Qualité, style et innovation pour tous vos besoins";
 
@@ -516,7 +516,8 @@ const Index = () => {
           </div>
           
           <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-primary-foreground/60">
-            <p>&copy; 2025 {companyName}. Tous droits réservés.</p>
+            <p>&copy; <Link to="/admin/auth" className="hover:text-primary-foreground transition-colors">2025</Link> {companyName}. Tous droits réservés.
+            </p>
           </div>
         </div>
       </footer>
