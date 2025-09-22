@@ -237,7 +237,7 @@ export default function Cart() {
 
       setTimeout(() => {
         window.open(nabooTransaction.checkout_url, '_blank');
-        navigate(`/suivi-commande?phone=${customerInfo.phone}&order_id=${order.id}`);
+        navigate(`/order-tracking?phone=${customerInfo.phone}&order_id=${order.id}`);
       }, 2000);
 
     } catch (error: any) {
@@ -347,7 +347,7 @@ export default function Cart() {
       });
 
       clearCart();
-      navigate(`/suivi-commande?phone=${customerInfo.phone}&order_id=${order.id}`);
+      navigate(`/order-tracking?phone=${customerInfo.phone}&order_id=${order.id}`);
     } catch (error: any) {
       console.error('Erreur commande gratuite:', error);
       toast({
