@@ -51,6 +51,8 @@ interface Order {
   customer_phone: string;
   customer_address: string;
   created_at: string;
+  payment_method: string;
+  payment_status: string;
   order_items: OrderItem[];
 }
 
@@ -77,6 +79,12 @@ const statusLabels = {
   'en_livraison': 'En livraison',
   'livree': 'Livrée',
   'annulee': 'Annulée'
+};
+
+const paymentMethodLabels = {
+  'orange_money': 'Orange Money',
+  'wave': 'Wave',
+  'free': 'À la livraison'
 };
 
 export default function Admin() {
@@ -123,6 +131,7 @@ export default function Admin() {
     hero_subtitle: '',
     hero_image_url: '',
     logo_url: '',
+    footer_text: ''
   });
 
   // États pour le tableau de bord
@@ -138,6 +147,76 @@ export default function Admin() {
     fetchOrders();
     fetchSettings();
     fetchDashboardStats();
+
+    // Abonnement en temps réel aux changements
+    const productsSubscription = supabase
+      .channel('products-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'products'
+        },
+        () => {
+          fetchProducts();
+          fetchDashboardStats();
+        }
+      )
+      .subscribe();
+
+    const ordersSubscription = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders'
+        },
+        () => {
+          fetchOrders();
+          fetchDashboardStats();
+        }
+      )
+      .subscribe();
+
+    const orderItemsSubscription = supabase
+      .channel('order-items-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    const settingsSubscription = supabase
+      .channel('settings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_settings'
+        },
+        () => {
+          fetchSettings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productsSubscription);
+      supabase.removeChannel(ordersSubscription);
+      supabase.removeChannel(orderItemsSubscription);
+      supabase.removeChannel(settingsSubscription);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -227,6 +306,7 @@ export default function Admin() {
           hero_subtitle: data.hero_subtitle || '',
           hero_image_url: data.hero_image_url || '',
           logo_url: data.logo_url || '',
+          footer_text: data.footer_text || ''
         });
         setLogoPreview(data.logo_url);
       }
@@ -237,13 +317,14 @@ export default function Admin() {
 
   const fetchDashboardStats = async () => {
     try {
-      // Commandes d'aujourd'hui
+      // Commandes d'aujourd'hui avec paiement confirmé
       const today = new Date().toISOString().split('T')[0];
       const { data: todayOrdersData, error: ordersError } = await supabase
         .from('orders')
-        .select('total_amount')
+        .select('total_amount, payment_status, status')
         .gte('created_at', today + 'T00:00:00')
-        .lt('created_at', today + 'T23:59:59');
+        .lt('created_at', today + 'T23:59:59')
+        .eq('payment_status', 'paid'); // Seulement les commandes payées
 
       if (ordersError) throw ordersError;
 
@@ -255,8 +336,11 @@ export default function Admin() {
 
       if (stockError) throw stockError;
 
-      const todayOrders = todayOrdersData?.length || 0;
-      const todayRevenue = todayOrdersData?.reduce((sum, order) => sum + order.total_amount, 0) || 0;
+      // Commandes payées aujourd'hui
+      const paidOrdersToday = todayOrdersData?.filter(order => order.payment_status === 'paid') || [];
+      const todayOrders = paidOrdersToday.length;
+      const todayRevenue = paidOrdersToday.reduce((sum, order) => sum + order.total_amount, 0);
+
       const lowStockProducts = lowStockData?.length || 0;
 
       setDashboardStats({
@@ -582,6 +666,7 @@ export default function Admin() {
 
     try {
       let logoUrl = settingsForm.logo_url;
+      let heroImageUrl = settingsForm.hero_image_url;
       
       // Upload du logo si sélectionné
       if (logoFile) {
@@ -596,8 +681,9 @@ export default function Admin() {
           company_name: settingsForm.company_name,
           hero_title: settingsForm.hero_title,
           hero_subtitle: settingsForm.hero_subtitle,
-          hero_image_url: settingsForm.hero_image_url,
+          hero_image_url: heroImageUrl,
           logo_url: logoUrl,
+          footer_text: settingsForm.footer_text
         });
 
       if (error) throw error;
@@ -697,7 +783,7 @@ export default function Admin() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Commandes du jour</p>
+                      <p className="text-sm font-medium text-muted-foreground">Commandes payées du jour</p>
                       <p className="text-3xl font-bold text-foreground">{dashboardStats.todayOrders}</p>
                     </div>
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
@@ -753,21 +839,24 @@ export default function Admin() {
             {/* Aperçu des commandes récentes */}
             <Card className="card-elegant">
               <CardHeader>
-                <CardTitle>Commandes récentes</CardTitle>
+                <CardTitle>Commandes récentes (payées uniquement)</CardTitle>
               </CardHeader>
               <CardContent>
-                {orders.slice(0, 5).length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">Aucune commande récente</p>
+                {orders.filter(order => order.payment_status === 'paid').slice(0, 5).length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Aucune commande payée récente</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <div className="space-y-4">
-                      {orders.slice(0, 5).map((order) => (
+                      {orders.filter(order => order.payment_status === 'paid').slice(0, 5).map((order) => (
                         <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                           <div className="flex items-center space-x-4">
                             <div>
                               <p className="font-medium">#{order.order_number}</p>
                               <p className="text-sm text-muted-foreground">
                                 {order.customer_first_name} {order.customer_last_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {paymentMethodLabels[order.payment_method as keyof typeof paymentMethodLabels] || order.payment_method}
                               </p>
                             </div>
                           </div>
@@ -1049,6 +1138,14 @@ export default function Admin() {
                           {order.customer_first_name} {order.customer_last_name} - {order.customer_phone}
                         </p>
                         <p className="text-sm text-muted-foreground">{order.customer_address}</p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'}>
+                            Paiement: {order.payment_status === 'paid' ? 'Payé' : 'En attente'}
+                          </Badge>
+                          <Badge variant="outline">
+                            {paymentMethodLabels[order.payment_method as keyof typeof paymentMethodLabels] || order.payment_method}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold">{order.total_amount.toLocaleString()} FCFA</p>
@@ -1187,30 +1284,6 @@ export default function Admin() {
                     }}
                   />
                 </div>
-                
-                <Button type="submit" className="w-full" disabled={uploadingImage}>
-                  {uploadingImage ? "Upload en cours..." : "Sauvegarder les paramètres"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-        {activeTab === 'settings' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Paramètres du site</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleUpdateSettings} className="space-y-6">
-                <div>
-                  <Label htmlFor="company_name">Nom de l'entreprise</Label>
-                  <Input
-                    id="company_name"
-                    value={settingsForm.company_name}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, company_name: e.target.value }))}
-                    placeholder="AFFAIRE DE GRAND"
-                  />
-                </div>
 
                 <div>
                   <Label htmlFor="logo">Logo de l'entreprise</Label>
@@ -1234,29 +1307,18 @@ export default function Admin() {
                 </div>
 
                 <div>
-                  <Label htmlFor="hero_title">Titre de la bannière</Label>
-                  <Input
-                    id="hero_title"
-                    value={settingsForm.hero_title}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_title: e.target.value }))}
-                    placeholder="Découvrez nos produits d'exception"
+                  <Label htmlFor="footer_text">Texte du footer</Label>
+                  <Textarea
+                    id="footer_text"
+                    value={settingsForm.footer_text}
+                    onChange={(e) => setSettingsForm(prev => ({ ...prev, footer_text: e.target.value }))}
+                    placeholder="Votre boutique de confiance pour des produits d'exception"
+                    rows={2}
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="hero_subtitle">Sous-titre de la bannière</Label>
-                  <Input
-                    id="hero_subtitle"
-                    value={settingsForm.hero_subtitle}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_subtitle: e.target.value }))}
-                    placeholder="Qualité, style et innovation pour tous vos besoins"
-                  />
-                </div>
-
                 
-
-                <Button type="submit" disabled={uploadingLogo}>
-                  {uploadingLogo ? "Sauvegarde en cours..." : "Sauvegarder les paramètres"}
+                <Button type="submit" className="w-full" disabled={uploadingImage || uploadingLogo}>
+                  {uploadingImage || uploadingLogo ? "Upload en cours..." : "Sauvegarder les paramètres"}
                 </Button>
               </form>
             </CardContent>
