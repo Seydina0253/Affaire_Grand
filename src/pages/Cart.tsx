@@ -48,7 +48,7 @@ export default function Cart() {
   const createNabooTransaction = async (orderId: string) => {
     try {
       // Utiliser une URL de production avec HTTPS pour NabooPay
-      const baseUrl = 'https://localhost:8080/';
+      const baseUrl = 'https://ndionelaye.netlify.app/';
       const successUrl = `${baseUrl}/order-success?order_id=${orderId}`;
       const errorUrl = `${baseUrl}/order-error?order_id=${orderId}`;
 
