@@ -297,7 +297,7 @@ const Index = () => {
       {/* Section Hero avec image de fond */}
       <section className="relative min-h-[70vh] flex items-center">
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm"
+          className="absolute inset-0 bg-cover bg-center opacity-20"
           style={{ backgroundImage: settings?.hero_image_url ? `url(${settings.hero_image_url})` : 'none' }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20"></div>
@@ -366,8 +366,8 @@ const Index = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map((product) => (
-                <Card key={product.id} className="group hover:shadow-lg transition-shadow flex flex-col h-full">
-                  <CardHeader className="p-0 flex-grow-0">
+                <Card key={product.id} className="group hover:shadow-lg transition-shadow">
+                  <CardHeader className="p-0">
                     <div className="aspect-square overflow-hidden rounded-t-lg bg-muted relative">
                       {product.image_url ? (
                         <img
@@ -396,7 +396,7 @@ const Index = () => {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="p-4 flex flex-col flex-grow">
+                  <CardContent className="p-4">
                     <CardTitle className="text-lg mb-2 line-clamp-2">{product.name}</CardTitle>
                     {product.description && (
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
@@ -408,7 +408,7 @@ const Index = () => {
                     </p>
 
                     {/* Sélection des variantes */}
-                    <div className="space-y-3 mb-4 flex-grow">
+                    <div className="space-y-3 mb-4">
                       {/* Couleurs */}
                       {product.product_variants?.filter(v => v.type === 'color').length > 0 && (
                         <div>
@@ -459,7 +459,7 @@ const Index = () => {
                     </div>
 
                     <Button 
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground mt-auto"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                       onClick={() => handleAddToCart(product)}
                       disabled={product.stock === 0}
                     >
