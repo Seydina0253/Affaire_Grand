@@ -122,6 +122,29 @@ export default function Cart() {
     }
   };
 
+  // Fonction pour ouvrir la page de paiement de manière compatible mobile
+  const openPaymentPage = (url: string) => {
+    // Méthode 1: Essayer d'abord avec window.location.href (meilleure compatibilité mobile)
+    try {
+      window.location.href = url;
+    } catch (error) {
+      console.error('Erreur avec window.location.href:', error);
+      
+      // Méthode 2: Fallback avec window.open
+      try {
+        const newWindow = window.open(url, '_blank');
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Si le popup est bloqué, rediriger dans la même fenêtre
+          window.location.href = url;
+        }
+      } catch (fallbackError) {
+        console.error('Erreur avec window.open:', fallbackError);
+        // Dernière tentative avec location.href
+        window.location.href = url;
+      }
+    }
+  };
+
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -235,10 +258,15 @@ export default function Cart() {
         description: "Vous allez être redirigé vers la page de paiement sécurisée",
       });
 
+      // Redirection immédiate sans délai pour une meilleure compatibilité mobile
       setTimeout(() => {
-        window.open(nabooTransaction.checkout_url, '_blank');
-        navigate(`/order-tracking?phone=${customerInfo.phone}&order_id=${order.id}`);
-      }, 2000);
+        openPaymentPage(nabooTransaction.checkout_url);
+        
+        // Navigation vers la page de suivi après un court délai
+        setTimeout(() => {
+          navigate(`/order-tracking?phone=${customerInfo.phone}&order_id=${order.id}`);
+        }, 1000);
+      }, 500);
 
     } catch (error: any) {
       console.error('Erreur complète:', error);
@@ -388,11 +416,9 @@ export default function Cart() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour
           </Button> 
-          <div class="p-4"></div>
+          <div className="p-4"></div>
           <h1 className="text-3xl font-bold">Mon Panier</h1>
         </div>
-        
-        
       </div>
       
       {checkoutUrl && (
