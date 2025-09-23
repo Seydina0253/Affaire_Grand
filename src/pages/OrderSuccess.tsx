@@ -74,9 +74,9 @@ export default function OrderSuccess() {
               <Home className="w-4 h-4 mr-2" />
               Accueil
             </Button>
-            <Button variant="outline" onClick={() => navigate('/orders')}>
+            <Button variant="outline" onClick={() => navigate('/suivi-commande')}>
               <ShoppingBag className="w-4 h-4 mr-2" />
-              Mes Commandes
+              Suivi de Commande
             </Button>
           </div>
         </CardContent>

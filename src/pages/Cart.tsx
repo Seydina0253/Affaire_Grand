@@ -218,9 +218,13 @@ export default function Cart() {
         }
       }
 
+      // Générer le numéro de commande
+      const orderNumber = Math.floor(Math.random() * 9000000) + 1000000;
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          order_number: orderNumber,
           customer_first_name: customerInfo.firstName,
           customer_last_name: customerInfo.lastName,
           customer_phone: customerInfo.phone,
@@ -261,8 +265,7 @@ export default function Cart() {
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
-          naboopay_order_id: nabooTransaction.order_id,
-          payment_status: 'pending'
+          naboopay_order_id: nabooTransaction.order_id
         } as any)
         .eq('id', order.id);
 
@@ -328,9 +331,13 @@ export default function Cart() {
         }
       }
 
+      // Générer le numéro de commande
+      const orderNumber = Math.floor(Math.random() * 9000000) + 1000000;
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
+          order_number: orderNumber,
           customer_first_name: customerInfo.firstName,
           customer_last_name: customerInfo.lastName,
           customer_phone: customerInfo.phone,

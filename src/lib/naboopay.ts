@@ -5,7 +5,7 @@ const NABOOPAY_API_KEY = import.meta.env.VITE_NABOOPAY_API_KEY;
 const NABOOPAY_BASE_URL = 'https://api.naboopay.com/api/v1';
 
 export const naboopayApi = axios.create({
-  baseURL: NABOOPAY_BASE_URL,
+  baseURL: NABOOPAY_BASE_URL, 
   headers: {
     'Authorization': `Bearer ${NABOOPAY_API_KEY}`,
     'Content-Type': 'application/json',

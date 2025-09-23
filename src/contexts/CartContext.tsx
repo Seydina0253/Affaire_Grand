@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export interface CartItem {
+interface CartItem {
   id: string;
   name: string;
   price: number;
-  image_url: string | null;
   quantity: number;
+  image_url?: string;
   color?: string;
   size?: string;
   category?: string;
+  colorVariant?: string;
+  sizeVariant?: string;
 }
 
 interface CartContextType {
@@ -34,43 +36,49 @@ export const useCart = () => {
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  // Charger le panier depuis localStorage au démarrage
+  // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
-      setItems(JSON.parse(savedCart));
+      try {
+        setItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error('Error loading cart from localStorage:', error);
+      }
     }
   }, []);
 
-  // Sauvegarder le panier dans localStorage à chaque changement
+  // Save cart to localStorage whenever items change
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(items));
   }, [items]);
 
   const addItem = (newItem: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
-    setItems(prev => {
-      const existingItemIndex = prev.findIndex(item => 
-        item.id === newItem.id && 
-        item.color === newItem.color && 
-        item.size === newItem.size
+    setItems(prevItems => {
+      const existingItemIndex = prevItems.findIndex(
+        item => item.id === newItem.id && 
+               item.color === newItem.color && 
+               item.size === newItem.size &&
+               item.colorVariant === newItem.colorVariant &&
+               item.sizeVariant === newItem.sizeVariant
       );
 
       if (existingItemIndex > -1) {
-        // Si l'article existe déjà, augmenter la quantité
-        const updatedItems = [...prev];
+        const updatedItems = [...prevItems];
         updatedItems[existingItemIndex].quantity += newItem.quantity || 1;
         return updatedItems;
       } else {
-        // Sinon, ajouter le nouvel article
-        return [...prev, { ...newItem, quantity: newItem.quantity || 1 }];
+        return [...prevItems, { ...newItem, quantity: newItem.quantity || 1 }];
       }
     });
   };
 
   const removeItem = (id: string, color?: string, size?: string) => {
-    setItems(prev => prev.filter(item => 
-      !(item.id === id && item.color === color && item.size === size)
-    ));
+    setItems(prevItems => 
+      prevItems.filter(item => 
+        !(item.id === id && item.color === color && item.size === size)
+      )
+    );
   };
 
   const updateQuantity = (id: string, quantity: number, color?: string, size?: string) => {
@@ -79,35 +87,40 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    setItems(prev => prev.map(item => 
-      item.id === id && item.color === color && item.size === size
-        ? { ...item, quantity }
-        : item
-    ));
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id && item.color === color && item.size === size
+          ? { ...item, quantity }
+          : item
+      )
+    );
   };
 
   const clearCart = () => {
     setItems([]);
+    localStorage.removeItem('cart');
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return items.reduce((total, item) => total + item.price * item.quantity, 0);
   };
-
   const getTotalItems = () => {
-    return items.reduce((total, item) => total + item.quantity, 0);
-  };
+  return items.reduce((total, item) => total + item.quantity, 0);
+};
+
 
   return (
-    <CartContext.Provider value={{
-      items,
-      addItem,
-      removeItem,
-      updateQuantity,
-      clearCart,
-      getTotalPrice,
-      getTotalItems
-    }}>
+    <CartContext.Provider
+      value={{
+        items,
+        addItem,
+        removeItem,
+        updateQuantity,
+        clearCart,
+        getTotalPrice,
+        getTotalItems,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

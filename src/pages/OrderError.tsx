@@ -32,7 +32,7 @@ export default function OrderError() {
               <ShoppingCart className="w-4 h-4 mr-2" />
               Retour au Panier
             </Button>
-            <Button variant="outline" onClick={() => navigate('/')}>
+            <Button variant="outline" onClick={() => navigate('/panier')}>
               <Home className="w-4 h-4 mr-2" />
               Accueil
             </Button>

@@ -52,7 +52,7 @@ interface Order {
   customer_address: string;
   created_at: string;
   payment_method: string;
-  payment_status: string;
+  payment_status?: string;
   order_items: OrderItem[];
 }
 
@@ -321,10 +321,9 @@ export default function Admin() {
       const today = new Date().toISOString().split('T')[0];
       const { data: todayOrdersData, error: ordersError } = await supabase
         .from('orders')
-        .select('total_amount, payment_status, status')
+        .select('total_amount, status')
         .gte('created_at', today + 'T00:00:00')
-        .lt('created_at', today + 'T23:59:59')
-        .eq('payment_status', 'paid'); // Seulement les commandes payées
+        .lt('created_at', today + 'T23:59:59');
 
       if (ordersError) throw ordersError;
 
@@ -336,11 +335,14 @@ export default function Admin() {
 
       if (stockError) throw stockError;
 
-      // Commandes payées aujourd'hui
-      const paidOrdersToday = todayOrdersData?.filter(order => order.payment_status === 'paid') || [];
-      const todayOrders = paidOrdersToday.length;
-      const todayRevenue = paidOrdersToday.reduce((sum, order) => sum + order.total_amount, 0);
-
+      // Calculer les statistiques - filtrer les commandes payées/confirmées
+      const paidOrders = todayOrdersData?.filter(order => 
+        order.status === 'confirmee' || order.status === 'en_preparation' || 
+        order.status === 'en_livraison' || order.status === 'livree'
+      ) || [];
+      
+      const todayOrders = paidOrders.length;
+      const todayRevenue = paidOrders.reduce((sum, order) => sum + order.total_amount, 0);
       const lowStockProducts = lowStockData?.length || 0;
 
       setDashboardStats({
@@ -842,12 +844,12 @@ export default function Admin() {
                 <CardTitle>Commandes récentes (payées uniquement)</CardTitle>
               </CardHeader>
               <CardContent>
-                {orders.filter(order => order.payment_status === 'paid').slice(0, 5).length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">Aucune commande payée récente</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <div className="space-y-4">
-                      {orders.filter(order => order.payment_status === 'paid').slice(0, 5).map((order) => (
+            {orders.filter(order => order.status === 'confirmee' || order.status === 'en_preparation' || order.status === 'en_livraison' || order.status === 'livree').slice(0, 5).length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">Aucune commande payée récente</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="space-y-4">
+                  {orders.filter(order => order.status === 'confirmee' || order.status === 'en_preparation' || order.status === 'en_livraison' || order.status === 'livree').slice(0, 5).map((order) => (
                         <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                           <div className="flex items-center space-x-4">
                             <div>
@@ -1139,8 +1141,14 @@ export default function Admin() {
                         </p>
                         <p className="text-sm text-muted-foreground">{order.customer_address}</p>
                         <div className="flex gap-2 mt-1">
-                          <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'}>
-                            Paiement: {order.payment_status === 'paid' ? 'Payé' : 'En attente'}
+                          <Badge variant={
+                            order.status === 'confirmee' || order.status === 'en_preparation' || 
+                            order.status === 'en_livraison' || order.status === 'livree' ? 'default' : 'secondary'
+                          }>
+                            Paiement: {
+                              order.status === 'confirmee' || order.status === 'en_preparation' || 
+                              order.status === 'en_livraison' || order.status === 'livree' ? 'Payé' : 'En attente'
+                            }
                           </Badge>
                           <Badge variant="outline">
                             {paymentMethodLabels[order.payment_method as keyof typeof paymentMethodLabels] || order.payment_method}
