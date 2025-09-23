@@ -52,15 +52,29 @@ export default function Cart() {
       const successUrl = `${baseUrl}/order-success?order_id=${orderId}`;
       const errorUrl = `${baseUrl}/order-error?order_id=${orderId}`;
 
+      // Créer un produit pour les frais de livraison
+      const deliveryProduct = {
+        name: "Frais de livraison",
+        category: "Livraison",
+        amount: Math.round(deliveryFee),
+        quantity: 1,
+        description: "Frais de livraison à domicile"
+      };
+
       const transactionData: NabooTransactionRequest = {
         method_of_payment: paymentMethod === 'wave' ? ['WAVE'] : ['ORANGE_MONEY'],
-        products: items.map(item => ({
-          name: item.name.substring(0, 100),
-          category: item.category || 'General',
-          amount: Math.round(item.price),
-          quantity: item.quantity,
-          description: `${item.name}${item.color ? ` - Couleur: ${item.color}` : ''}${item.size ? ` - Taille: ${item.size}` : ''}`.substring(0, 200)
-        })),
+        products: [
+          // Produits de la commande
+          ...items.map(item => ({
+            name: item.name.substring(0, 100),
+            category: item.category || 'General',
+            amount: Math.round(item.price),
+            quantity: item.quantity,
+            description: `${item.name}${item.color ? ` - Couleur: ${item.color}` : ''}${item.size ? ` - Taille: ${item.size}` : ''}`.substring(0, 200)
+          })),
+          // Frais de livraison
+          deliveryProduct
+        ],
         success_url: successUrl,
         error_url: errorUrl,
         is_escrow: false,
@@ -75,6 +89,9 @@ export default function Cart() {
       console.log('Méthode de paiement sélectionnée:', paymentMethod);
       console.log('Numéro de téléphone:', customerInfo.phone);
       console.log('Numéro nettoyé:', customerInfo.phone.replace(/\s/g, ''));
+      console.log('Total produits:', totalPrice);
+      console.log('Frais de livraison:', deliveryFee);
+      console.log('Total final:', finalPrice);
       console.log('Données envoyées à NabooPay:', JSON.stringify(transactionData, null, 2));
 
       const response = await naboopayApi.put<NabooTransactionResponse>(
@@ -605,8 +622,8 @@ export default function Cart() {
                           <CreditCard className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium">WAVE avec la carte bancaire </p>
-                          <p className="text-sm text-muted-foreground">payez avec votre carte prépayée wave sécurisé via naboopay</p>
+                          <p className="font-medium">WAVE </p>
+                          <p className="text-sm text-muted-foreground">Paiement mobile sécurisé via NabooPay</p>
                         </div>
                       </Label>
                     </div>
