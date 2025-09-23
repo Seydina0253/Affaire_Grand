@@ -41,7 +41,7 @@ export default function Cart() {
   const navigate = useNavigate();
 
   const totalPrice = getTotalPrice();
-  const deliveryFee = 2000;
+  const deliveryFee = 10;
   const finalPrice = totalPrice + deliveryFee;
   const totalItems = items.reduce((total, item) => total + item.quantity, 0);
 
