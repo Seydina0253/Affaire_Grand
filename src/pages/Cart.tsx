@@ -49,7 +49,7 @@ export default function Cart() {
     try {
       // Utiliser une URL de production avec HTTPS pour NabooPay
       const baseUrl = 'https://ndionelaye.netlify.app/';
-      const successUrl = `${baseUrl}/order-success?order_id=${orderId}`;
+      const successUrl = `${baseUrl}/suivi-commande`;
       const errorUrl = `${baseUrl}/order-error?order_id=${orderId}`;
 
       // Créer un produit pour les frais de livraison
