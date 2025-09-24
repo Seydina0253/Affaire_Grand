@@ -373,7 +373,7 @@ const Index = () => {
                         <img
                           src={product.image_url}
                           alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center">
