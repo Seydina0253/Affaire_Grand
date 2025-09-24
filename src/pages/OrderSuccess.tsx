@@ -3,18 +3,53 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Truck, Clock, AlertCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OrderSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('order_id');
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(100);
+  const [paymentUpdated, setPaymentUpdated] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!orderId) {
       console.error('Aucun ID de commande trouvé dans les paramètres URL');
-      return;
+      return;  
     }
+
+    // Mettre à jour le statut de paiement
+    const updatePaymentStatus = async () => {
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ 
+            payment_status: 'paye',
+            status: 'confirmee' // Optionnel : mettre aussi à jour le statut de la commande
+          })
+          .eq('id', orderId);
+
+        if (error) throw error;
+        
+        setPaymentUpdated(true);
+        console.log('Statut de paiement mis à jour avec succès');
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour du statut de paiement:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour le statut de paiement",
+          variant: "destructive",
+        });
+      }
+    };
+
+    updatePaymentStatus();
+  }, [orderId, toast]);
+
+  useEffect(() => {
+    if (!orderId || !paymentUpdated) return;
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -28,7 +63,7 @@ export default function OrderSuccess() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [navigate, orderId]);
+  }, [navigate, orderId, paymentUpdated]);
 
   if (!orderId) {
     return (
@@ -72,22 +107,37 @@ export default function OrderSuccess() {
               Votre paiement a été traité avec succès. Votre commande est confirmée.
             </p>
             
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-center space-x-2 mb-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-800">
-                  Redirection automatique dans {countdown} seconde{countdown > 1 ? 's' : ''}...
-                </span>
+            {paymentUpdated ? (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-blue-800">
+                    Statut de paiement mis à jour
+                  </span>
+                </div>
+                <div className="flex items-center justify-center space-x-2 mt-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-800">
+                    Redirection dans {countdown} seconde{countdown > 1 ? 's' : ''}...
+                  </span>
+                </div>
               </div>
-              <p className="text-sm text-blue-700">
-                Vous serez redirigé vers le suivi de commande pour suivre l'état de votre commande.
-              </p>
-            </div>
+            ) : (
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <div className="flex items-center justify-center space-x-2">
+                  <Clock className="w-5 h-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">
+                    Mise à jour du statut de paiement en cours...
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button 
                 onClick={() => navigate(`/order-tracking?order_id=${orderId}`)}
                 className="bg-green-600 hover:bg-green-700"
+                disabled={!paymentUpdated}
               >
                 <Truck className="w-4 h-4 mr-2" />
                 Suivre ma commande maintenant
@@ -135,4 +185,4 @@ export default function OrderSuccess() {
       </Card>
     </div>
   );
-}
+} 

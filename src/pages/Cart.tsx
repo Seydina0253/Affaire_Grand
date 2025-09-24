@@ -232,6 +232,7 @@ export default function Cart() {
           total_amount: finalPrice,
           delivery_fee: deliveryFee,
           payment_method: paymentMethod,
+          payment_status: 'en_attente',
           status: 'en_attente'
         })
         .select()
@@ -339,9 +340,10 @@ export default function Cart() {
           customer_address: customerInfo.address,
           total_amount: finalPrice,
           delivery_fee: deliveryFee,
+          payment_status: 'en_attente',
           payment_method: 'free',
           status: 'confirmee'
-        })
+        }) 
         .select()
         .single();
 
@@ -432,7 +434,7 @@ export default function Cart() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour
           </Button> 
-          <div className="p-4"></div>
+          <div className="p-1"></div>
           <h1 className="text-3xl font-bold">Mon Panier</h1>
         </div>
       </div>

@@ -345,11 +345,18 @@ export default function Admin() {
       const todayRevenue = paidOrders.reduce((sum, order) => sum + order.total_amount, 0);
       const lowStockProducts = lowStockData?.length || 0;
 
+      // Récupérer le nombre total de produits
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select('id');
+
+      if (productsError) throw productsError;
+
       setDashboardStats({
         todayOrders,
         todayRevenue,
         lowStockProducts,
-        totalProducts: products.length
+        totalProducts: productsData?.length || 0
       });
     } catch (error) {
       console.error('Erreur dashboard stats:', error);
@@ -920,19 +927,19 @@ export default function Admin() {
                         type="number"
                         value={productForm.price}
                         onChange={(e) => setProductForm(prev => ({ ...prev, price: e.target.value }))}
-                        placeholder="15000"
+                        placeholder="5000"
                         required
                       />
                     </div>
                     
                     <div>
-                      <Label htmlFor="stock">Stock *</Label>
+                      <Label htmlFor="stock">Stock total *</Label>
                       <Input
                         id="stock"
                         type="number"
                         value={productForm.stock}
                         onChange={(e) => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                        placeholder="10"
+                        placeholder="100"
                         required
                       />
                     </div>
@@ -940,84 +947,108 @@ export default function Admin() {
                   
                   <div>
                     <Label htmlFor="image">Image du produit</Label>
-                    <Input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="cursor-pointer"
-                    />
-                    {uploadingImage && <p className="text-sm text-muted-foreground mt-1">Upload en cours...</p>}
-                    {imagePreview && (
-                      <div className="mt-2">
-                        <img 
-                          src={imagePreview} 
-                          alt="Aperçu" 
-                          className="w-20 h-20 object-cover rounded border"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Gestion des variantes */}
-                  <div className="space-y-3">
-                    <Label>Variantes (couleur, taille - facultatif)</Label>
-                    
-                    {/* Ajouter une nouvelle variante */}
-                    <div className="grid grid-cols-4 gap-2">
-                      <Select value={newVariant.type} onValueChange={(value) => setNewVariant(prev => ({ ...prev, type: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="color">Couleur</SelectItem>
-                          <SelectItem value="size">Taille</SelectItem>
-                        </SelectContent>
-                        </Select>
+                    <div className="mt-1 flex items-center space-x-4">
                       <Input
-                        placeholder="Valeur"
-                        value={newVariant.value}
-                        onChange={(e) => setNewVariant(prev => ({ ...prev, value: e.target.value }))}
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
                       />
-                      <Input
-                        type="number"
-                        placeholder="Stock"
-                        value={newVariant.stock}
-                        onChange={(e) => setNewVariant(prev => ({ ...prev, stock: e.target.value }))}
-                      />
-                      <Button type="button" onClick={addVariant} size="sm">
-                        <Plus className="w-4 h-4" />
-                      </Button>
                     </div>
-
-                    {/* Liste des variantes ajoutées */}
-                    {variants.length > 0 && (
-                      <div className="space-y-2">
-                        {variants.map((variant, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                            <span className="text-sm">
-                              {variant.type}: {variant.value} (Stock: {variant.stock})
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeVariant(index)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
+                    {imagePreview && (
+                      <div className="mt-2 relative w-32 h-32 border rounded-lg overflow-hidden">
+                        <img
+                          src={imagePreview}
+                          alt="Aperçu"
+                          className="w-full h-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 w-6 h-6 p-0"
+                          onClick={() => {
+                            setImagePreview(null);
+                            setImageFile(null);
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex space-x-2">
-                    <Button type="submit" className="flex-1" disabled={uploadingImage}>
-                      {uploadingImage ? "Upload en cours..." : (productForm.id ? "Modifier le produit" : "Ajouter le produit")}
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={productForm.is_active}
+                      onCheckedChange={(checked) => setProductForm(prev => ({ ...prev, is_active: checked }))}
+                    />
+                    <Label>Produit actif</Label>
+                  </div>
+                  
+                  {/* Gestion des variantes */}
+                  <div className="border-t pt-4">
+                    <Label className="text-lg">Variantes (couleur, taille, etc.)</Label>
+                    <div className="space-y-3 mt-3">
+                      {variants.map((variant, index) => (
+                        <div key={index} className="flex items-center space-x-2 p-2 bg-muted rounded">
+                          <span className="flex-1 text-sm">
+                            {variant.type}: {variant.value} (Stock: {variant.stock})
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeVariant(index)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      
+                      <div className="grid grid-cols-12 gap-2">
+                        <Input
+                          placeholder="Type (ex: couleur)"
+                          value={newVariant.type}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, type: e.target.value }))}
+                          className="col-span-4"
+                        />
+                        <Input
+                          placeholder="Valeur (ex: rouge)"
+                          value={newVariant.value}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, value: e.target.value }))}
+                          className="col-span-4"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Stock"
+                          value={newVariant.stock}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, stock: e.target.value }))}
+                          className="col-span-3"
+                        />
+                        <Button
+                          type="button"
+                          onClick={addVariant}
+                          className="col-span-1"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2 pt-4">
+                    <Button type="submit" disabled={uploadingImage} className="flex-1">
+                      {uploadingImage ? 'Upload...' : (productForm.id ? 'Modifier' : 'Ajouter')}
                     </Button>
                     {productForm.id && (
-                      <Button type="button" variant="outline" onClick={resetProductForm}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={resetProductForm}
+                      >
                         Annuler
                       </Button>
                     )}
@@ -1025,220 +1056,234 @@ export default function Admin() {
                 </form>
               </CardContent>
             </Card>
-
-            {/* Liste des produits existants */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Produits existants ({products.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {products.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    Aucun produit. Ajoutez votre premier produit !
-                  </p>
-                ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {products.map((product) => (
-                      <div key={product.id} className="flex items-start justify-between p-4 border rounded-lg">
-                        <div className="flex items-start space-x-3 flex-1">
+            
+            {/* Liste des produits */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Liste des produits ({products.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {products.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">Aucun produit ajouté</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {products.map((product) => (
+                        <div key={product.id} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                           {product.image_url && (
-                            <img 
-                              src={product.image_url} 
+                            <img
+                              src={product.image_url}
                               alt={product.name}
                               className="w-16 h-16 object-cover rounded"
                             />
                           )}
                           <div className="flex-1">
-                            <h4 className="font-medium">{product.name}</h4>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium">{product.name}</h3>
+                              {!product.is_active && (
+                                <Badge variant="secondary">Inactif</Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
-                              {product.price.toLocaleString()} FCFA - Stock: {product.stock}
+                              {product.description || 'Aucune description'}
                             </p>
-                            {product.product_variants && product.product_variants.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {product.product_variants.map((variant) => (
-                                  <Badge key={variant.id} variant="outline" className="text-xs">
-                                    {variant.type}: {variant.value} ({variant.stock})
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="font-bold text-primary">{product.price.toLocaleString()} FCFA</span>
+                              <span className={`text-sm ${product.stock < 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                Stock: {product.stock}
+                              </span>
+                              {product.product_variants && product.product_variants.length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {product.product_variants.length} variante(s)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center space-x-1">
-                            <Switch
-                              checked={product.is_active}
-                              onCheckedChange={async (checked) => {
-                                try {
-                                  const { error } = await supabase
-                                    .from('products')
-                                    .update({ is_active: checked })
-                                    .eq('id', product.id);
-
-                                  if (error) throw error;
-
-                                  toast({
-                                    title: "Succès",
-                                    description: `Produit ${checked ? 'activé' : 'désactivé'}`,
-                                  });
-
-                                  fetchProducts();
-                                } catch (error) {
-                                  console.error('Erreur:', error);
-                                  toast({
-                                    title: "Erreur",
-                                    description: "Impossible de modifier le statut",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            />
-                            <span className="text-sm">{product.is_active ? 'Actif' : 'Inactif'}</span>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteProduct(product.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
 
         {activeTab === 'orders' && (
-          <div className="space-y-6">
-            {orders.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <ShoppingBag className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Aucune commande</h3>
-                  <p className="text-muted-foreground">Les nouvelles commandes apparaîtront ici</p>
-                </CardContent>
-              </Card>
-            ) : (
-              orders.map((order) => (
-                <Card key={order.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>Commande #{order.order_number}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {order.customer_first_name} {order.customer_last_name} - {order.customer_phone}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{order.customer_address}</p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant={
-                            order.status === 'confirmee' || order.status === 'en_preparation' || 
-                            order.status === 'en_livraison' || order.status === 'livree' ? 'default' : 'secondary'
-                          }>
-                            Paiement: {
-                              order.status === 'confirmee' || order.status === 'en_preparation' || 
-                              order.status === 'en_livraison' || order.status === 'livree' ? 'Payé' : 'En attente'
-                            }
-                          </Badge>
-                          <Badge variant="outline">
-                            {paymentMethodLabels[order.payment_method as keyof typeof paymentMethodLabels] || order.payment_method}
-                          </Badge>
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestion des commandes ({orders.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {orders.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Aucune commande</p>
+              ) : (
+                <div className="space-y-6">
+                  {orders.map((order) => (
+                    <div key={order.id} className="border rounded-lg p-6 space-y-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                          <h3 className="font-bold text-lg">Commande #{order.order_number}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString('fr-FR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          <p className="text-sm">
+                            <span className="font-medium">Paiement:</span>{' '}
+                            <Badge variant={order.payment_status === 'paye' ? 'default' : 'secondary'}>
+                              {order.payment_status === 'paye' ? 'Payé' : 'En attente'}
+                            </Badge>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-xl">{order.total_amount.toLocaleString()} FCFA</p>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Select
+                              value={order.status}
+                              onValueChange={(value) => updateOrderStatus(order.id, value)}
+                            >
+                              <SelectTrigger className="w-40">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(statusLabels).map(([value, label]) => (
+                                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">{order.total_amount.toLocaleString()} FCFA</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Articles */}
-                      <div>
-                        <h4 className="font-medium mb-2">Articles</h4>
-                        <div className="space-y-2">
-                          {order.order_items.map((item, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
-                              <div className="flex items-center space-x-3">
-                                {item.product_image_url && (
-                                  <img 
-                                    src={item.product_image_url} 
-                                    alt={item.product_name}
-                                    className="w-12 h-12 object-cover rounded border"
-                                  />
-                                )}
-                                <div>
-                                  <span className="font-medium">{item.product_name}</span>
-                                  {item.color_variant && <span className="text-sm text-muted-foreground ml-2">({item.color_variant})</span>}
-                                  {item.size_variant && <span className="text-sm text-muted-foreground ml-1">- {item.size_variant}</span>}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="font-medium mb-2">Informations client</h4>
+                          <div className="bg-muted p-3 rounded-lg text-sm">
+                            <p><strong>Nom:</strong> {order.customer_first_name} {order.customer_last_name}</p>
+                            <p><strong>Téléphone:</strong> {order.customer_phone}</p>
+                            <p><strong>Adresse:</strong> {order.customer_address}</p>
+                            <p><strong>Méthode de paiement:</strong> {paymentMethodLabels[order.payment_method as keyof typeof paymentMethodLabels] || order.payment_method}</p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-medium mb-2">Détails de la commande</h4>
+                          <div className="space-y-2">
+                            {order.order_items.map((item) => (
+                              <div key={item.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                                <div className="flex items-center space-x-3">
+                                  {item.product_image_url && (
+                                    <img
+                                      src={item.product_image_url}
+                                      alt={item.product_name}
+                                      className="w-10 h-10 object-cover rounded"
+                                    />
+                                  )}
+                                  <div>
+                                    <p className="font-medium">{item.product_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {item.color_variant && `Couleur: ${item.color_variant}`}
+                                      {item.size_variant && ` | Taille: ${item.size_variant}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-medium">{item.quantity} × {item.unit_price.toLocaleString()} FCFA</p>
+                                  <p className="font-bold">{item.total_price.toLocaleString()} FCFA</p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p>Qté: {item.quantity}</p>
-                                <p className="font-medium">{item.total_price.toLocaleString()} FCFA</p>
-                              </div>
+                            ))}
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span>Frais de livraison:</span>
+                              <span className="font-medium">{order.delivery_fee.toLocaleString()} FCFA</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Statut */}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label htmlFor={`status-${order.id}`}>Statut de la commande</Label>
-                          <Select
-                            value={order.status}
-                            onValueChange={(value) => updateOrderStatus(order.id, value)}
-                          >
-                            <SelectTrigger className="w-48">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(statusLabels).map(([value, label]) => (
-                                <SelectItem key={value} value={value}>
-                                  {label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <div className="flex justify-between items-center font-bold text-lg">
+                              <span>Total:</span>
+                              <span>{order.total_amount.toLocaleString()} FCFA</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {activeTab === 'settings' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Paramètres du site</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleUpdateSettings} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramètres du site</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleUpdateSettings} className="space-y-6">
                   <div>
-                    <Label htmlFor="company_name">Nom de l'entreprise</Label>
+                    <Label htmlFor="company_name">Nom de l'entreprise *</Label>
                     <Input
                       id="company_name"
                       value={settingsForm.company_name}
                       onChange={(e) => setSettingsForm(prev => ({ ...prev, company_name: e.target.value }))}
-                      placeholder="Mon Entreprise"
+                      placeholder="Votre nom d'entreprise"
+                      required
                     />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="logo">Logo de l'entreprise</Label>
+                    <div className="mt-1 flex items-center space-x-4">
+                      <Input
+                        id="logo"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo}
+                      />
+                    </div>
+                    {logoPreview && (
+                      <div className="mt-2 relative w-32 h-32 border rounded-lg overflow-hidden">
+                        <img
+                          src={logoPreview}
+                          alt="Logo preview"
+                          className="w-full h-full object-contain"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-1 right-1 w-6 h-6 p-0"
+                          onClick={() => {
+                            setLogoPreview(null);
+                            setLogoFile(null);
+                          }}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   
                   <div>
@@ -1247,90 +1292,39 @@ export default function Admin() {
                       id="hero_title"
                       value={settingsForm.hero_title}
                       onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_title: e.target.value }))}
-                      placeholder="Bienvenue sur notre boutique"
+                      placeholder="Titre accrocheur pour la page d'accueil"
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="hero_subtitle">Sous-titre</Label>
-                  <Input
-                    id="hero_subtitle"
-                    value={settingsForm.hero_subtitle}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_subtitle: e.target.value }))}
-                    placeholder="Découvrez nos produits de qualité"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="hero_image_upload">Image héro (Upload local)</Label>
-                  <Input
-                    id="hero_image_upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          setUploadingImage(true);
-                          const imageUrl = await uploadImage(file);
-                          setSettingsForm(prev => ({ ...prev, hero_image_url: imageUrl }));
-                          toast({
-                            title: "Image uploadée",
-                            description: "L'image héro a été uploadée avec succès",
-                          });
-                        } catch (error) {
-                          toast({
-                            title: "Erreur",
-                            description: "Impossible d'uploader l'image",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setUploadingImage(false);
-                        }
-                      }
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="logo">Logo de l'entreprise</Label>
-                  <Input
-                    id="logo"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="cursor-pointer"
-                  />
-                  {uploadingLogo && <p className="text-sm text-muted-foreground mt-1">Upload du logo en cours...</p>}
-                  {logoPreview && (
-                    <div className="mt-2">
-                      <img 
-                        src={logoPreview} 
-                        alt="Aperçu du logo" 
-                        className="w-20 h-20 object-cover rounded border"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="footer_text">Texte du footer</Label>
-                  <Textarea
-                    id="footer_text"
-                    value={settingsForm.footer_text}
-                    onChange={(e) => setSettingsForm(prev => ({ ...prev, footer_text: e.target.value }))}
-                    placeholder="Votre boutique de confiance pour des produits d'exception"
-                    rows={2}
-                  />
-                </div>
-                
-                <Button type="submit" className="w-full" disabled={uploadingImage || uploadingLogo}>
-                  {uploadingImage || uploadingLogo ? "Upload en cours..." : "Sauvegarder les paramètres"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  
+                  <div>
+                    <Label htmlFor="hero_subtitle">Sous-titre</Label>
+                    <Textarea
+                      id="hero_subtitle"
+                      value={settingsForm.hero_subtitle}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, hero_subtitle: e.target.value }))}
+                      placeholder="Description ou slogan"
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="footer_text">Texte de pied de page</Label>
+                    <Textarea
+                      id="footer_text"
+                      value={settingsForm.footer_text}
+                      onChange={(e) => setSettingsForm(prev => ({ ...prev, footer_text: e.target.value }))}
+                      placeholder="Texte à afficher en bas du site"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  <Button type="submit" disabled={uploadingLogo} className="w-full">
+                    {uploadingLogo ? 'Upload du logo...' : 'Enregistrer les paramètres'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
