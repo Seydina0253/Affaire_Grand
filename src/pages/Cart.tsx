@@ -48,8 +48,8 @@ export default function Cart() {
   const createNabooTransaction = async (orderId: string) => {
     try {
       // Utiliser une URL de production avec HTTPS pour NabooPay
-      const baseUrl = 'https://ndionelaye.netlify.app/';
-      const successUrl = `${baseUrl}/suivi-commande`;
+      const baseUrl = 'https://ndionelaye.netlify.app';
+      const successUrl = `${baseUrl}/order-success?order_id=${orderId}`;
       const errorUrl = `${baseUrl}/order-error?order_id=${orderId}`;
 
       // Créer un produit pour les frais de livraison
@@ -281,11 +281,6 @@ export default function Cart() {
       // Redirection immédiate sans délai pour une meilleure compatibilité mobile
       setTimeout(() => {
         openPaymentPage(nabooTransaction.checkout_url);
-        
-        // Navigation vers la page de suivi après un court délai
-        setTimeout(() => {
-          navigate(`/order-tracking?phone=${customerInfo.phone}&order_id=${order.id}`);
-        }, 1000);
       }, 500);
 
     } catch (error: any) {
@@ -423,10 +418,7 @@ export default function Cart() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Retour à la boutique
           </Button>
-          <Button variant="outline" onClick={() => navigate('/')}>
-            <Home className="w-4 h-4 mr-2" />
-            Accueil
-          </Button>
+          
         </div>
       </div>
     );
